@@ -1,41 +1,38 @@
-# compiler options
-CXX = g++
-CXX_FLAGS = -std=c++11
-CXX_LINK_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system -pthread
+EXE_NAME	:= chip8
+LINK_LIBS	:= -lsfml-graphics -lsfml-window -lsfml-system
+MODULES		:= .
 
-# Final binary
-BIN = chip8
+CC			:= g++
+LD			:= g++
 
-# Put all auto generated stuff to this build dir.
-BUILD_DIR = ./build
 
-# List of all .cpp source files.
-CPP = $(wildcard *.cpp)
+SRC_DIR		:= $(addprefix src/,$(MODULES))
+BUILD_DIR	:= $(addprefix build/,$(MODULES))
+SRC			:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
+OBJ			:= $(patsubst src/%.cpp,build/%.o,$(SRC))
 
-# All .o files go to build dir.
-OBJ = $(CPP:%.cpp=$(BUILD_DIR)/%.o)
+vpath %.cpp $(SRC_DIR)
 
-# Gcc/Clang will create these .d files containing dependencies.
-DEP = $(OBJ:%.o=%.d)
+define make-goal
+$1/%.o: %.cpp
+	$(CC) -c -ggdb $$< -o $$@
+endef
 
-# the binary to build rule
-$(BIN):	$(OBJ)
-    # Just link all the object files.
-	$(CXX) $(CXX_FLAGS) $^ -o $@ $(CXX_LINK_FLAGS)
+.PHONY: all checkdirs clean
 
-# Include all .d files
--include $(DEP)
+all: checkdirs $(EXE_NAME)
 
-# Build target for every single object file.
-# The potential dependency on header files is covered
-# by calling `-include $(DEP)`.
-$(BUILD_DIR)/%.o : %.cpp
-	mkdir -p $(@D)
-    # The -MMD flags additionaly creates a .d file with
-    # the same name as the .o file.
-	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
+$(EXE_NAME): $(OBJ)
+	$(LD) $^ -o $@ $(LINK_LIBS)
 
-.PHONY : clean
-clean :
-    # This should remove all generated files.
-	-rm $(BIN) $(OBJ) $(DEP)
+
+checkdirs: $(BUILD_DIR)
+
+$(BUILD_DIR):
+	@mkdir -p $@
+
+clean:
+	@rm -rf build
+	@rm -rf $(EXE_NAME)
+
+$(foreach bdir,$(BUILD_DIR),$(eval $(call make-goal,$(bdir))))
